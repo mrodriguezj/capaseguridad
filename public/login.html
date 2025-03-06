@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login con OTP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="flex justify-center items-center min-h-screen bg-gray-100">
+    <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+        <h2 class="text-2xl font-bold mb-4">Ingresar Código OTP</h2>
+        <input type="text" id="otp" class="border p-2 rounded w-full mb-3" placeholder="Código OTP">
+        <button onclick="login()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            Enviar
+        </button>
+    </div>
+
+    <!-- Modal de éxito -->
+    <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+            <h2 class="text-xl font-bold text-green-600">¡Acceso exitoso! 🎉</h2>
+            <p>Serás redirigido en breve...</p>
+            <button onclick="window.location.href='protected.html'" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+                Ir al sitio
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de error -->
+    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+            <h2 class="text-xl font-bold text-red-600">Error ❌</h2>
+            <p id="error-message"></p>
+            <button onclick="closeErrorModal()" class="mt-4 bg-gray-500 text-white px-4 py-2 rounded">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        async function login() {
+            const user = "prueba123";
+            const otp = document.getElementById("otp").value;
+
+            const response = await fetch("../src/verify_otp.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `user=${user}&otp=${otp}`
+            });
+
+            const text = await response.text();
+            console.log("Respuesta cruda del servidor:", text);
+
+            try {
+                const result = JSON.parse(text);
+                if (result.token) {
+                    localStorage.setItem("token", result.token);
+                    document.getElementById("success-modal").classList.remove("hidden");
+                    setTimeout(() => {
+                        window.location.href = "protected.html";
+                    }, 2000);
+                } else {
+                    showErrorModal(result.error || "Error desconocido");
+                }
+            } catch (error) {
+                console.error("Error procesando la respuesta:", error);
+                showErrorModal("Error al comunicarse con el servidor");
+            }
+        }
+
+        function showErrorModal(message) {
+            document.getElementById("error-message").innerText = message;
+            document.getElementById("error-modal").classList.remove("hidden");
+        }
+
+        function closeErrorModal() {
+            document.getElementById("error-modal").classList.add("hidden");
+        }
+    </script>
+</body>
+</html>

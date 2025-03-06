@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar OTP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="flex justify-center items-center min-h-screen bg-gray-100">
+    <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+        <h2 class="text-2xl font-bold mb-4">Escanea este código QR</h2>
+        <p class="text-gray-600 mb-3">Agrega este código en Google Authenticator</p>
+        <img id="qr-code" class="mx-auto border p-2 rounded-lg shadow" alt="Cargando código QR...">
+        <br>
+        <a href="login.html" class="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            Ya lo escaneé, ir a Login
+        </a>
+    </div>
+
+    <script>
+        async function loadQRCode() {
+            try {
+                const response = await fetch("../src/generate_qr.php");
+
+                if (!response.ok) {
+                    console.error("Error al cargar el QR:", response.status, response.statusText);
+                    document.getElementById("qr-code").alt = "Error al generar el QR";
+                    return;
+                }
+
+                const blob = await response.blob();
+                document.getElementById("qr-code").src = URL.createObjectURL(blob);
+            } catch (error) {
+                console.error("Error al obtener el código QR:", error);
+                document.getElementById("qr-code").alt = "No se pudo cargar el código QR";
+            }
+        }
+
+        window.onload = loadQRCode;
+    </script>
+</body>
+</html>
