@@ -9,36 +9,108 @@
 <body class="flex justify-center items-center min-h-screen bg-gray-100">
     <div class="bg-white p-6 rounded-lg shadow-lg text-center">
         <h2 class="text-2xl font-bold text-green-600" id="message">Cargando...</h2>
+        <p class="mt-2 text-gray-600">Tu sesión expira en <span id="countdown" class="font-bold text-red-500">--:--</span></p>
         <button onclick="logout()" class="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
             Cerrar sesión
         </button>
+    </div>
+
+    <!-- Modal de sesión expirada -->
+    <div id="session-expired-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+            <h2 class="text-xl font-bold text-red-600">Sesión expirada</h2>
+            <p>Tu sesión ha caducado. Serás redirigido al login.</p>
+            <button onclick="redirectToLogin()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+                Ir al login
+            </button>
+        </div>
     </div>
 
     <script>
         async function checkAccess() {
             const token = localStorage.getItem("token");
             if (!token) {
-                alert("No tienes acceso");
-                window.location.href = "login.html";
+                console.warn("⚠️ No se encontró el token en localStorage. Redirigiendo al login.");
+                redirectToLogin();
                 return;
             }
 
+            // 📌 Verificar si el token aún es válido en el servidor
             const response = await fetch("../src/verify_token.php", {
                 method: "GET",
                 headers: { "Authorization": token }
             });
 
             const result = await response.json();
+            console.log("🔍 Respuesta del servidor:", result);
+
             if (result.error) {
-                alert("Acceso denegado");
-                localStorage.removeItem("token");
-                window.location.href = "login.html";
+                console.error("⛔ Token inválido o expirado:", result.error);
+                showSessionExpiredModal();
+                return;
             } else {
                 document.getElementById("message").innerText = result.message;
+
+                // 📌 Extraer tiempo de expiración del token y activar contador
+                const decodedToken = parseJwt(token);
+                if (decodedToken && decodedToken.exp) {
+                    console.log("⏳ Token expira en:", new Date(decodedToken.exp * 1000));
+                    startCountdown(decodedToken.exp);
+                } else {
+                    console.warn("⚠️ No se pudo extraer la expiración del token.");
+                }
             }
         }
 
+        function parseJwt(token) {
+            try {
+                return JSON.parse(atob(token.split('.')[1])); // Decodifica el payload del JWT
+            } catch (e) {
+                console.error("⚠️ Error al decodificar el token JWT:", e);
+                return null;
+            }
+        }
+
+        function startCountdown(expirationTime) {
+            const countdownElement = document.getElementById("countdown");
+
+            function updateCountdown() {
+                const now = Math.floor(Date.now() / 1000); // Obtener tiempo actual en segundos
+                const timeLeft = expirationTime - now;
+
+                if (timeLeft <= 0) {
+                    showSessionExpiredModal();
+                    return;
+                }
+
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                console.log(`🕒 Tiempo restante: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+
+                setTimeout(updateCountdown, 1000); // Actualizar cada segundo
+            }
+
+            updateCountdown();
+        }
+
+        function showSessionExpiredModal() {
+            console.warn("🚨 La sesión ha caducado. Mostrando modal.");
+            document.getElementById("session-expired-modal").classList.remove("hidden");
+            setTimeout(() => {
+                redirectToLogin();
+            }, 3000);
+        }
+
+        function redirectToLogin() {
+            console.log("🔄 Redirigiendo al login...");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+
         function logout() {
+            console.log("👋 Cerrando sesión...");
             localStorage.removeItem("token");
             window.location.href = "login.html";
         }
